@@ -33,12 +33,12 @@ public class User {
   @Column(nullable = false)
   private String name;
 
-  // 🔹 연락처 기반 친구 매칭을 위한 필드 추가
-  @Column(nullable = false, unique = true)
+  @Column(nullable = false, unique = true, name = "phone_number")
   private String phoneNumber;
 
-  // 🔹 상태 메시지, 프로필 이미지
+  @Column(name = "status_message")
   private String statusMessage;
-  private String profileImage;
 
+  @Column(name = "profile_image_url")
+  private String profileImageUrl;
 }

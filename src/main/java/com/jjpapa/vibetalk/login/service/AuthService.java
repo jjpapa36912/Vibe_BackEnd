@@ -1,6 +1,7 @@
 package com.jjpapa.vibetalk.login.service;
 
 import com.jjpapa.vibetalk.login.abstraction.UserRepository;
+import com.jjpapa.vibetalk.login.domain.dto.JwtUtil;
 import com.jjpapa.vibetalk.login.domain.dto.LoginRequest;
 import com.jjpapa.vibetalk.login.domain.dto.LoginResponse;
 import com.jjpapa.vibetalk.login.domain.dto.SignupRequest;
@@ -16,6 +17,7 @@ public class AuthService {
 
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
+  private final JwtUtil jwtUtil;  // ✅ 추가
 
   public LoginResponse login(LoginRequest request) {
     User user = userRepository.findByEmail(request.getEmail())
@@ -25,8 +27,8 @@ public class AuthService {
       throw new RuntimeException("Invalid password");
     }
 
-    // JWT 발급 (예시로 간단한 문자열)
-    String token = "JWT-TOKEN-" + user.getId();
+    // ✅ JWT 발급
+    String token = jwtUtil.generateToken(user.getPhoneNumber());
 
     return new LoginResponse(
         user.getId(),
@@ -54,6 +56,4 @@ public class AuthService {
     userRepository.save(user);
     return new SignupResponse(user.getId(), user.getEmail(), user.getName());
   }
-
-
 }

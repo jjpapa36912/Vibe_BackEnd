@@ -33,12 +33,15 @@ public class FriendController {
               .filter(c -> c.getPhoneNumber().equals(user.getPhoneNumber()))
               .map(ContactSyncRequest::getContactName)
               .findFirst()
-              .orElse(user.getName()); // 기본값은 앱 이름
+              .orElse(user.getName());
+
           return new FriendSyncResponse(
               user.getId(),
               user.getPhoneNumber(),
               user.getName(),
-              contactName
+              contactName,
+              user.getStatusMessage(),
+              user.getProfileImageUrl()
           );
         })
         .toList();
