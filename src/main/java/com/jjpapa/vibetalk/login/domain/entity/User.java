@@ -41,4 +41,6 @@ public class User {
 
   @Column(name = "profile_image_url")
   private String profileImageUrl;
+  @Column(length = 512)
+  private String deviceToken; // ✅ 푸시 토큰 저장
 }

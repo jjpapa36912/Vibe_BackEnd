@@ -7,6 +7,7 @@ import com.jjpapa.vibetalk.login.domain.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -24,13 +25,13 @@ public class UserController {
 
 
   @GetMapping("/me")
-  public ResponseEntity<UserProfileResponse> getMyProfile(
-      @RequestHeader("Authorization") String token) {
-
-    String phoneNumber = jwtUtil.extractPhoneNumber(token);
-    User user = userRepository.findByPhoneNumber(phoneNumber)
-        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-    return ResponseEntity.ok(new UserProfileResponse(user));
+  public UserProfileResponse getProfile(@AuthenticationPrincipal User user) {
+    return new UserProfileResponse(
+        user.getId(),
+        user.getName(),
+        user.getStatusMessage(),
+        user.getProfileImageUrl()
+    );
   }
+
 }

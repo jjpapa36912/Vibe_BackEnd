@@ -34,7 +34,7 @@ public class UserProfileController {
       @RequestParam(required = false) String statusMessage,
       @RequestParam(required = false) MultipartFile profileImage) throws IOException {
 
-    String phoneNumber = jwtUtil.extractPhoneNumber(token);
+    String phoneNumber = jwtUtil.extractEmail(token);
     User user = userRepository.findByPhoneNumber(phoneNumber)
         .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 

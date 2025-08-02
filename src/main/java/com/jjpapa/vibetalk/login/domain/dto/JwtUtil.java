@@ -6,29 +6,37 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
 @Component
 public class JwtUtil {
   @Value("${jwt.secret}")
   private String secret;
 
-  public String generateToken(String phoneNumber) {
+  public String generateToken(String email) {
     return Jwts.builder()
-        .setSubject(phoneNumber)
+        .setSubject(email)   // ✅ phoneNumber → email로 변경
         .setIssuedAt(new Date())
-        .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 1일
+        .setExpiration(new Date(System.currentTimeMillis() + 86400000))
         .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
         .compact();
   }
-
-  public String extractPhoneNumber(String token) {
+  // ✅ JWT 검증 로직 추가
+  public boolean validateToken(String token) {
+    try {
+      Jwts.parserBuilder()
+          .setSigningKey(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
+          .build()
+          .parseClaimsJws(token.replace("Bearer ", ""));
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+  public String extractEmail(String token) {
     return Jwts.parserBuilder()
-        .setSigningKey(Keys.hmacShaKeyFor(secret.getBytes(
-            StandardCharsets.UTF_8)))
+        .setSigningKey(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
         .build()
         .parseClaimsJws(token.replace("Bearer ", ""))
         .getBody()
         .getSubject();
   }
-
 }

@@ -35,9 +35,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     String token = authHeader.substring(7);
     try {
-      String phoneNumber = jwtUtil.extractPhoneNumber("Bearer " + token);
-      User user = userRepository.findByPhoneNumber(phoneNumber)
+      String email = jwtUtil.extractEmail("Bearer " + token);
+      System.out.println("🔑 [JwtFilter] 추출된 이메일: " + email);
+
+      User user = userRepository.findByEmail(email)
           .orElse(null);
+      if (user == null) {
+        System.out.println("❌ [JwtFilter] 사용자 없음 → 403");
+      }
 
       if (user != null) {
         UsernamePasswordAuthenticationToken authentication =

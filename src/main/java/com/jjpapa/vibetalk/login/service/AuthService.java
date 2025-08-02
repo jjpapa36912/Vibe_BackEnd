@@ -8,6 +8,7 @@ import com.jjpapa.vibetalk.login.domain.dto.SignupRequest;
 import com.jjpapa.vibetalk.login.domain.dto.SignupResponse;
 import com.jjpapa.vibetalk.login.domain.entity.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +29,9 @@ public class AuthService {
     }
 
     // ✅ JWT 발급
-    String token = jwtUtil.generateToken(user.getPhoneNumber());
+    String token = jwtUtil.generateToken(user.getEmail());
+    System.out.println("✅ [AuthService] 발급된 JWT: " + token);
+
 
     return new LoginResponse(
         user.getId(),
@@ -37,6 +40,8 @@ public class AuthService {
         token
     );
   }
+
+
 
   public SignupResponse register(SignupRequest request) {
     if (userRepository.findByEmail(request.getEmail()).isPresent()) {
