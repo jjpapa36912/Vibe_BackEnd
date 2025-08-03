@@ -15,6 +15,15 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
   List<ChatRoom> findByUserId(@Param("userId") Long userId);
   @Query("SELECT r FROM ChatRoom r JOIN ChatRoomMember m ON r.id = m.chatRoom.id WHERE m.user.id = :userId")
   List<ChatRoom> findAllByMember(@Param("userId") Long userId);
+  @Query("SELECT r.id FROM ChatRoom r " +
+      "JOIN ChatRoomMember m ON r.id = m.chatRoom.id " +
+      "WHERE m.user.id IN :memberIds " +
+      "GROUP BY r.id " +
+      "HAVING COUNT(DISTINCT m.user.id) = :memberCount " +
+      "AND COUNT(DISTINCT m.user.id) = " +
+      "(SELECT COUNT(m2) FROM ChatRoomMember m2 WHERE m2.chatRoom.id = r.id)")
+  List<Long> findRoomWithExactMembers(@Param("memberIds") List<Long> memberIds,
+      @Param("memberCount") long memberCount);
 
 }
 

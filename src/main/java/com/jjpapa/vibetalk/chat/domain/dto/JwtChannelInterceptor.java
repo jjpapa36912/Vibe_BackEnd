@@ -8,6 +8,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -19,31 +20,45 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     this.jwtTokenProvider = jwtTokenProvider;
   }
 
+
   @Override
   public Message<?> preSend(Message<?> message, MessageChannel channel) {
-    StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
-    StompCommand command = accessor.getCommand();
+    StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+    StompCommand command = accessor != null ? accessor.getCommand() : null;
 
-    // ✅ 디버깅 로그
-    System.out.println("🔍 [JwtInterceptor] 전체 헤더: " + accessor.toNativeHeaderMap());
-    System.out.println("🔑 Authorization(Native): " + accessor.getFirstNativeHeader("Authorization"));
-    System.out.println("🔑 Session Attribute(Authorization): " + accessor.getSessionAttributes().get("Authorization"));
+    System.out.println("🔍 [JwtInterceptor] 전체 헤더: " + (accessor != null ? accessor.toNativeHeaderMap() : "null"));
+    if (accessor != null) {
+      System.out.println("🔑 Authorization(Native): " + accessor.getFirstNativeHeader("Authorization"));
+      if (accessor.getSessionAttributes() != null) {
+        System.out.println("🔑 Session Attribute(Authorization): " +
+            accessor.getSessionAttributes().get("Authorization"));
+      }
+    }
 
-    // ✅ 1. STOMP 헤더에서 토큰 우선 가져오기
-    String token = accessor.getFirstNativeHeader("Authorization");
+    String token = null;
 
-    // ✅ 2. 없으면 HTTP Handshake 세션에서 가져오기
-    if (token == null) {
+    // 1️⃣ Native Header에서
+    if (accessor != null && accessor.getFirstNativeHeader("Authorization") != null) {
+      token = accessor.getFirstNativeHeader("Authorization");
+    }
+
+    // 2️⃣ Handshake 세션에서
+    if (token == null && accessor != null && accessor.getSessionAttributes() != null) {
       token = (String) accessor.getSessionAttributes().get("Authorization");
     }
 
-    // ✅ 3. CONNECT, SEND, SUBSCRIBE 요청에 대해 JWT 검증
-    if (command == StompCommand.CONNECT ||
-        command == StompCommand.SEND ||
-        command == StompCommand.SUBSCRIBE) {
+    // 3️⃣ CONNECT일 경우: Handshake에서 세션으로 인증, 예외 발생하지 않도록 함
+    if (command == StompCommand.CONNECT) {
+      if (token == null) {
+        System.out.println("⚠️ [JwtInterceptor] CONNECT 단계에서 토큰 없음 - Handshake 인증만 사용");
+        return message;
+      }
+    }
 
+    // SEND, SUBSCRIBE 등에서는 토큰 필수
+    if (command == StompCommand.SEND || command == StompCommand.SUBSCRIBE) {
       if (token != null && token.startsWith("Bearer ")) {
-        token = token.substring(7); // "Bearer " 제거
+        token = token.substring(7);
         if (!jwtTokenProvider.validateToken(token)) {
           throw new IllegalArgumentException("Invalid JWT Token");
         }
@@ -54,16 +69,4 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
     return message;
   }
-
-
-
-  /**
-   * 인증이 필요한 STOMP 명령 정의
-   */
-  private boolean requiresAuthentication(StompCommand command) {
-    return command == StompCommand.CONNECT ||
-        command == StompCommand.SEND ||
-        command == StompCommand.SUBSCRIBE;
-  }
-
 }

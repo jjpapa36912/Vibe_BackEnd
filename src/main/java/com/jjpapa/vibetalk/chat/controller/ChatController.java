@@ -1,8 +1,11 @@
 package com.jjpapa.vibetalk.chat.controller;
 
+import com.jjpapa.vibetalk.chat.domain.dto.ChatMessageDto;
+import com.jjpapa.vibetalk.chat.domain.dto.ChatMessageResponse;
 import com.jjpapa.vibetalk.chat.domain.dto.ChatRoomListResponse;
 import com.jjpapa.vibetalk.chat.domain.dto.ChatRoomResponse;
 import com.jjpapa.vibetalk.chat.domain.dto.CreateChatRoomRequest;
+import com.jjpapa.vibetalk.chat.domain.dto.StompPrincipal;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatMessage;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoom;
 import com.jjpapa.vibetalk.chat.service.ChatService;
@@ -44,6 +47,14 @@ public class ChatController {
     List<ChatRoomResponse> rooms = chatService.getChatRoomsForUser(user);
     return ResponseEntity.ok(rooms);
   }
+  @GetMapping("/chatroom/{roomId}/messages")
+  public ResponseEntity<List<ChatMessageResponse>> getMessages(
+      @PathVariable Long roomId,
+      @AuthenticationPrincipal StompPrincipal principal) {
+
+    List<ChatMessageResponse> messages = chatService.getChatHistory(roomId);
+    return ResponseEntity.ok(messages);
+  }
 
   @GetMapping("/chat/rooms/{roomId}/members")
   public ResponseEntity<List<UserProfileResponse>> getChatRoomMembers(
@@ -57,13 +68,11 @@ public class ChatController {
 
 
   @MessageMapping("/chat.sendMessage/{roomId}")
-  public void sendMessage(@DestinationVariable Long roomId, ChatMessage message) {
-    ChatMessage saved = chatService.saveMessage(roomId, message);
+  public void sendMessage(@DestinationVariable Long roomId, ChatMessageDto dto) {
+    ChatMessage saved = chatService.saveMessage(roomId, dto);
 
-    // 방에 브로드캐스트
     messagingTemplate.convertAndSend("/topic/room." + roomId, saved);
 
-    // 각 사용자에게 총 안 읽은 메시지 갱신 알림
     List<Long> participants = chatService.getRoomParticipants(roomId);
     for (Long userId : participants) {
       int totalUnread = chatService.getTotalUnreadMessages(userId);
@@ -115,9 +124,9 @@ public class ChatController {
     private String roomName;
   }
 
-  @Data
-  static class ChatMessageDto {
-    private Long senderId;
-    private String message;
-  }
+//  @Data
+//  public static class ChatMessageDto {
+//    private Long senderId;
+//    private String message;
+//  }
 }

@@ -15,24 +15,20 @@ import org.springframework.web.socket.config.annotation.*;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   private final JwtChannelInterceptor jwtChannelInterceptor;
 
+
   @Override
   public void configureMessageBroker(MessageBrokerRegistry config) {
     config.enableSimpleBroker("/topic");
     config.setApplicationDestinationPrefixes("/app");
   }
 
-//  @Override
-//  public void registerStompEndpoints(StompEndpointRegistry registry) {
-//    registry.addEndpoint("/ws")
-//        .setAllowedOriginPatterns("*")
-//        .withSockJS();
-//  }
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
+    System.out.println("🚀 [Server] STOMP 엔드포인트 등록 시작 (/ws)");
     registry.addEndpoint("/ws")
-        .addInterceptors(new JwtHandshakeInterceptor()) // ✅ 추가
-        .setAllowedOriginPatterns("*")
-        .withSockJS();
+        .addInterceptors(new JwtHandshakeInterceptor()) // ✅ Handshake에서 JWT 추출
+        .setAllowedOriginPatterns("*"); // ✅ SockJS 제거
+    System.out.println("✅ [Server] STOMP 엔드포인트 등록 완료");
   }
 
   @Override

@@ -4,6 +4,8 @@ import com.jjpapa.vibetalk.chat.abstraction.ChatMessageRepository;
 import com.jjpapa.vibetalk.chat.abstraction.ChatRoomMemberRepository;
 import com.jjpapa.vibetalk.chat.abstraction.ChatRoomRepository;
 import com.jjpapa.vibetalk.chat.abstraction.UnreadMessageRepository;
+import com.jjpapa.vibetalk.chat.domain.dto.ChatMessageDto;
+import com.jjpapa.vibetalk.chat.domain.dto.ChatMessageResponse;
 import com.jjpapa.vibetalk.chat.domain.dto.ChatRoomResponse;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatMessage;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoom;
@@ -28,7 +30,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ChatService {
 
-  private final ChatRoomRepository roomRepo;
+//  private final ChatRoomRepository roomRepo;
   private final ChatRoomMemberRepository chatRoomMemberRepository;
   private final ChatMessageRepository messageRepo;
   private final UnreadMessageRepository unreadRepo;
@@ -39,16 +41,46 @@ public class ChatService {
   private final PushNotificationService pushNotificationService;
 
   @Transactional
-  public ChatMessage saveMessage(Long roomId, ChatMessage message) {
-    message.setRoomId(roomId);
+  public void sendMessage(ChatMessageDto dto) {
+    ChatRoom room = chatRoomRepository.findById(dto.getChatRoomId())
+        .orElseThrow(() -> new IllegalArgumentException("채팅방이 없습니다."));
+    User sender = userRepository.findById(dto.getSenderId())
+        .orElseThrow(() -> new IllegalArgumentException("사용자가 없습니다."));
+
+    ChatMessage message = ChatMessage.builder()
+        .chatRoom(room)
+        .sender(sender)
+        .content(dto.getContent())
+        .sentAt(LocalDateTime.now())
+        .build();
+
+    messageRepo.save(message);
+
+    messagingTemplate.convertAndSend(
+        "/topic/room." + room.getId(),
+        ChatMessageResponse.from(message)
+    );
+  }
+  @Transactional
+  public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
+    ChatRoom room = chatRoomRepository.findById(roomId)
+        .orElseThrow(() -> new IllegalArgumentException("채팅방이 존재하지 않습니다."));
+    User sender = userRepository.findById(dto.getSenderId())
+        .orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
+
+    ChatMessage message = ChatMessage.builder()
+        .chatRoom(room)
+        .sender(sender)
+        .content(dto.getContent())
+        .sentAt(LocalDateTime.now())
+        .build();
+
     ChatMessage saved = messageRepo.save(message);
 
-    // 방 참여자 찾기
     List<ChatRoomMember> participants = chatRoomMemberRepository.findByChatRoomId(roomId);
 
-    // UnreadMessage 생성
     for (ChatRoomMember member : participants) {
-      if (!member.getUser().getId().equals(message.getSenderId())) {
+      if (!member.getUser().getId().equals(sender.getId())) {
         UnreadMessage unread = new UnreadMessage();
         unread.setUserId(member.getUser().getId());
         unread.setRoomId(roomId);
@@ -56,8 +88,10 @@ public class ChatService {
         unreadRepo.save(unread);
       }
     }
+
     return saved;
   }
+
 
   public List<Long> getRoomParticipants(Long roomId) {
     return chatRoomMemberRepository.findByChatRoomId(roomId)
@@ -132,22 +166,34 @@ public class ChatService {
   }
   @Transactional
   public ChatRoomResponse createGroupChatRoom(User creator, List<User> members, String roomName) {
-    // 최대 인원 체크 (생성자 포함)
     if (members.size() > 7) {
       throw new IllegalArgumentException("채팅방 최대 인원은 8명입니다.");
     }
 
-    // 새로운 채팅방 생성
-    ChatRoom room = ChatRoom.builder()
-        .roomName(roomName)
-        .build();
-    chatRoomRepository.save(room);
-
-    // 중복 멤버 제거 + 생성자 추가
+    // 중복 제거 + 생성자 포함
     Set<User> uniqueMembers = new HashSet<>(members);
     uniqueMembers.add(creator);
 
-    // ChatRoomMember 엔티티 생성
+    List<Long> memberIds = uniqueMembers.stream()
+        .map(User::getId)
+        .toList();
+
+    // 기존 방 조회
+    List<Long> existingRooms = chatRoomRepository.findRoomWithExactMembers(memberIds, memberIds.size());
+    if (!existingRooms.isEmpty()) {
+      Long roomId = existingRooms.get(0);
+      ChatRoom existingRoom = chatRoomRepository.findById(roomId)
+          .orElseThrow(() -> new IllegalStateException("방이 존재하지 않습니다."));
+      return ChatRoomResponse.from(existingRoom);
+    }
+
+    // 새로운 방 생성
+    ChatRoom room = ChatRoom.builder()
+        .roomName(roomName)
+//        .createdBy(creator.getId())
+        .build();
+    chatRoomRepository.save(room);
+
     for (User user : uniqueMembers) {
       ChatRoomMember member = ChatRoomMember.builder()
           .chatRoom(room)
@@ -159,6 +205,7 @@ public class ChatService {
 
     return ChatRoomResponse.from(room);
   }
+
 
 
   public List<User> getChatRoomMembers(Long roomId) {
@@ -190,6 +237,37 @@ public class ChatService {
 
 
   public List<ChatRoom> getUserChatRooms(Long userId) {
-    return roomRepo.findByUserId(userId);
+    return chatRoomRepository.findByUserId(userId);
   }
+
+  @Transactional
+  public ChatMessageResponse sendMessage(ChatMessageDto messageDto, User sender) {
+    ChatRoom room = chatRoomRepository.findById(messageDto.getChatRoomId())
+        .orElseThrow(() -> new IllegalArgumentException("채팅방이 존재하지 않습니다."));
+
+    ChatMessage message = ChatMessage.builder()
+        .chatRoom(room)
+        .sender(sender)
+        .content(messageDto.getContent())
+        .sentAt(LocalDateTime.now())
+        .build();
+    messageRepo.save(message);
+
+    // STOMP로 전송
+    messagingTemplate.convertAndSend(
+        "/topic/chatroom/" + room.getId(),
+        ChatMessageResponse.from(message)
+    );
+
+    return ChatMessageResponse.from(message);
+  }
+
+  public List<ChatMessageResponse> getChatHistory(Long roomId) {
+    return messageRepo.findByChatRoomIdOrderBySentAtAsc(roomId)
+        .stream()
+        .map(ChatMessageResponse::from)
+        .toList();
+  }
+
+
 }
