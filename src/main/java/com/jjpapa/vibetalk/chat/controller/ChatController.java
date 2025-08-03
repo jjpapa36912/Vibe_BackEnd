@@ -2,6 +2,7 @@ package com.jjpapa.vibetalk.chat.controller;
 
 import com.jjpapa.vibetalk.chat.domain.dto.ChatRoomListResponse;
 import com.jjpapa.vibetalk.chat.domain.dto.ChatRoomResponse;
+import com.jjpapa.vibetalk.chat.domain.dto.CreateChatRoomRequest;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatMessage;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoom;
 import com.jjpapa.vibetalk.chat.service.ChatService;
@@ -11,6 +12,7 @@ import com.jjpapa.vibetalk.login.domain.dto.UserProfileResponse;
 import com.jjpapa.vibetalk.login.domain.entity.User;
 import com.jjpapa.vibetalk.login.service.AuthService;
 import java.nio.file.attribute.UserPrincipal;
+import java.security.Principal;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -37,19 +39,10 @@ public class ChatController {
 
 
   @GetMapping("/api/chat/rooms")
-  public ResponseEntity<List<ChatRoomListResponse>> getUserChatRooms(
-      @RequestHeader("Authorization") String token) {
-
-    String email = jwtUtil.extractEmail(token); // ✅ 같은 secret 사용
-    User user = userRepository.findByEmail(email)
-        .orElseThrow(() -> new RuntimeException("User not found"));
-
-    List<ChatRoom> rooms = chatService.getUserChatRooms(user.getId());
-    List<ChatRoomListResponse> response = rooms.stream()
-        .map(ChatRoomListResponse::from)
-        .toList();
-
-    return ResponseEntity.ok(response);
+  public ResponseEntity<List<ChatRoomResponse>> getMyChatRooms(Authentication authentication) {
+    User user = (User) authentication.getPrincipal();
+    List<ChatRoomResponse> rooms = chatService.getChatRoomsForUser(user);
+    return ResponseEntity.ok(rooms);
   }
 
   @GetMapping("/chat/rooms/{roomId}/members")
@@ -92,17 +85,25 @@ public class ChatController {
   }
 
   @PostMapping("/api/chat/rooms")
-  public ResponseEntity<ChatRoomResponse> createRoom(@RequestBody CreateRoomRequest request) {
+  public ResponseEntity<ChatRoomResponse> createChatRoom(
+      @RequestBody CreateChatRoomRequest request,
+      Principal principal) {
 
-    ChatRoom room = chatService.createRoom(request.getUserIds(), request.getCreatorId(), request.getRoomName());
+    // principal을 User로 캐스팅
+    User creator = (User) ((Authentication) principal).getPrincipal();
 
-    ChatRoomResponse response = new ChatRoomResponse(
-        room.getId(),
-        room.getRoomName()
+    // 초대할 멤버 조회
+    List<User> members = userRepository.findAllById(request.getMemberIds());
+
+    ChatRoomResponse response = chatService.createGroupChatRoom(
+        creator,
+        members,
+        request.getRoomName()
     );
 
     return ResponseEntity.ok(response);
   }
+
 
 
 

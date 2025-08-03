@@ -30,17 +30,17 @@ public class PushNotificationService {
     if (FirebaseApp.getApps().isEmpty()) {
       System.out.println("🚀 [PushNotificationService] Firebase 초기화 시작");
 
-      InputStream serviceAccount =
-          new ClassPathResource("firebase-service-account.json").getInputStream();
-
-
-      FirebaseOptions options = FirebaseOptions.builder()
-          .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-          .setProjectId("vibetalk-127a8") // 👈 반드시 추가
-          .build();
-      FirebaseApp.initializeApp(options);
-      log.info("Firebase Project ID: {}",
-          FirebaseApp.getInstance().getOptions().getProjectId());
+//      InputStream serviceAccount =
+//          new ClassPathResource("firebase-service-account.json").getInputStream();
+//
+//
+//      FirebaseOptions options = FirebaseOptions.builder()
+//          .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+//          .setProjectId("vibetalk-127a8") // 👈 반드시 추가
+//          .build();
+//      FirebaseApp.initializeApp(options);
+//      log.info("Firebase Project ID: {}",
+//          FirebaseApp.getInstance().getOptions().getProjectId());
       System.out.println("✅ [PushNotificationService] Firebase 초기화 완료");
     } else {
       System.out.println("ℹ️ [PushNotificationService] Firebase 이미 초기화됨");

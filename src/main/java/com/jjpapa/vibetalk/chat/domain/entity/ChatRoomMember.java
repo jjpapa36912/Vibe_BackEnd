@@ -23,5 +23,7 @@ public class ChatRoomMember {
   private ChatRoom chatRoom;
 
   private LocalDateTime joinedAt;
+
+
 }
 

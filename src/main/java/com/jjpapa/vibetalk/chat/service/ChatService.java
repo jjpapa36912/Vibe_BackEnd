@@ -4,6 +4,7 @@ import com.jjpapa.vibetalk.chat.abstraction.ChatMessageRepository;
 import com.jjpapa.vibetalk.chat.abstraction.ChatRoomMemberRepository;
 import com.jjpapa.vibetalk.chat.abstraction.ChatRoomRepository;
 import com.jjpapa.vibetalk.chat.abstraction.UnreadMessageRepository;
+import com.jjpapa.vibetalk.chat.domain.dto.ChatRoomResponse;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatMessage;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoom;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoomMember;
@@ -14,8 +15,10 @@ import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -127,6 +130,36 @@ public class ChatService {
 
     return savedRoom;
   }
+  @Transactional
+  public ChatRoomResponse createGroupChatRoom(User creator, List<User> members, String roomName) {
+    // 최대 인원 체크 (생성자 포함)
+    if (members.size() > 7) {
+      throw new IllegalArgumentException("채팅방 최대 인원은 8명입니다.");
+    }
+
+    // 새로운 채팅방 생성
+    ChatRoom room = ChatRoom.builder()
+        .roomName(roomName)
+        .build();
+    chatRoomRepository.save(room);
+
+    // 중복 멤버 제거 + 생성자 추가
+    Set<User> uniqueMembers = new HashSet<>(members);
+    uniqueMembers.add(creator);
+
+    // ChatRoomMember 엔티티 생성
+    for (User user : uniqueMembers) {
+      ChatRoomMember member = ChatRoomMember.builder()
+          .chatRoom(room)
+          .user(user)
+          .joinedAt(LocalDateTime.now())
+          .build();
+      chatRoomMemberRepository.save(member);
+    }
+
+    return ChatRoomResponse.from(room);
+  }
+
 
   public List<User> getChatRoomMembers(Long roomId) {
     return chatRoomMemberRepository.findByChatRoomId(roomId)
@@ -134,6 +167,27 @@ public class ChatService {
         .map(ChatRoomMember::getUser) // ✅ userId 대신 user 객체 반환
         .collect(Collectors.toList());
   }
+  @Transactional
+  public List<ChatRoomResponse> getChatRoomsForUser(User user) {
+    List<ChatRoom> rooms = chatRoomRepository.findAllByMember(user.getId());
+
+    return rooms.stream().map(room -> {
+      List<User> members = chatRoomMemberRepository.findUsersByRoomId(room.getId());
+      // 현재 로그인 유저 제외
+      String displayName = members.stream()
+          .filter(member -> !member.getId().equals(user.getId()))
+          .map(User::getName)
+          .collect(Collectors.joining(", "));
+
+      // 그룹 이름이 비어 있으면 fallback
+      if (displayName.isBlank()) {
+        displayName = room.getRoomName();
+      }
+
+      return new ChatRoomResponse(room.getId(), displayName);
+    }).collect(Collectors.toList());
+  }
+
 
   public List<ChatRoom> getUserChatRooms(Long userId) {
     return roomRepo.findByUserId(userId);
