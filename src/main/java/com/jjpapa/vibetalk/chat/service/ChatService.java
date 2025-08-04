@@ -23,10 +23,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ChatService {
 
@@ -261,10 +263,15 @@ public class ChatService {
 
     return ChatMessageResponse.from(message);
   }
-
+  @Transactional(readOnly = true)
   public List<ChatMessageResponse> getChatHistory(Long roomId) {
-    return messageRepo.findByChatRoomIdOrderBySentAtAsc(roomId)
-        .stream()
+    log.info("📥 [ChatService] getChatHistory 호출 - roomId: {}", roomId);
+
+    List<ChatMessage> messages = messageRepo.findByChatRoomIdOrderBySentAtAsc(roomId);
+
+    log.info("✅ [ChatService] 조회된 메시지 수: {}", messages.size());
+
+    return messages.stream()
         .map(ChatMessageResponse::from)
         .toList();
   }

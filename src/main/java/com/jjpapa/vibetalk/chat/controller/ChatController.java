@@ -18,6 +18,7 @@ import java.nio.file.attribute.UserPrincipal;
 import java.security.Principal;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -31,6 +32,7 @@ import java.util.List;
 
 @Controller
 @RequiredArgsConstructor
+@Slf4j
 public class ChatController {
 
   private final ChatService chatService;
@@ -52,9 +54,17 @@ public class ChatController {
       @PathVariable Long roomId,
       @AuthenticationPrincipal StompPrincipal principal) {
 
+    log.info("📥 [ChatController] getMessages 호출 - roomId: {}, principal: {}",
+        roomId,
+        principal != null ? principal.getName() : "null");
+
     List<ChatMessageResponse> messages = chatService.getChatHistory(roomId);
+
+    log.info("✅ [ChatController] getMessages 완료 - 반환 메시지 수: {}", messages.size());
+
     return ResponseEntity.ok(messages);
   }
+
 
   @GetMapping("/chat/rooms/{roomId}/members")
   public ResponseEntity<List<UserProfileResponse>> getChatRoomMembers(
@@ -66,19 +76,47 @@ public class ChatController {
     return ResponseEntity.ok(response);
   }
 
-
   @MessageMapping("/chat.sendMessage/{roomId}")
   public void sendMessage(@DestinationVariable Long roomId, ChatMessageDto dto) {
-    ChatMessage saved = chatService.saveMessage(roomId, dto);
+    log.info("📩 [sendMessage] 채팅 메시지 수신 - roomId: {}, dto: {}", roomId, dto);
 
-    messagingTemplate.convertAndSend("/topic/room." + roomId, saved);
+    try {
+      ChatMessage saved = chatService.saveMessage(roomId, dto);
+      log.info("✅ [sendMessage] 메시지 DB 저장 완료: {}", saved.getId());
 
-    List<Long> participants = chatService.getRoomParticipants(roomId);
-    for (Long userId : participants) {
-      int totalUnread = chatService.getTotalUnreadMessages(userId);
-      messagingTemplate.convertAndSend("/topic/unread/total/" + userId, totalUnread);
+      // 엔티티 → DTO 변환
+      ChatMessageDto responseDto = ChatMessageDto.fromEntity(saved);
+      log.info("🔄 [sendMessage] 엔티티 → DTO 변환 완료");
+
+      messagingTemplate.convertAndSend("/topic/room." + roomId, responseDto);
+      log.info("📤 [sendMessage] WebSocket 전송 완료 → /topic/room.{}", roomId);
+
+      List<Long> participants = chatService.getRoomParticipants(roomId);
+      log.info("👥 [sendMessage] 채팅방 참가자 수: {}", participants.size());
+
+      for (Long userId : participants) {
+        int totalUnread = chatService.getTotalUnreadMessages(userId);
+        messagingTemplate.convertAndSend("/topic/unread/total/" + userId, totalUnread);
+        log.info("🔔 [sendMessage] 안 읽은 메시지 수 전송 - userId: {}, count: {}", userId, totalUnread);
+      }
+    } catch (Exception e) {
+      log.error("❌ [sendMessage] 에러 발생: ", e);
     }
   }
+
+
+//  @MessageMapping("/chat.sendMessage/{roomId}")
+//  public void sendMessage(@DestinationVariable Long roomId, ChatMessageDto dto) {
+//    ChatMessage saved = chatService.saveMessage(roomId, dto);
+//
+//    messagingTemplate.convertAndSend("/topic/room." + roomId, saved);
+//
+//    List<Long> participants = chatService.getRoomParticipants(roomId);
+//    for (Long userId : participants) {
+//      int totalUnread = chatService.getTotalUnreadMessages(userId);
+//      messagingTemplate.convertAndSend("/topic/unread/total/" + userId, totalUnread);
+//    }
+//  }
 
   @PostMapping("/api/chat/rooms/{roomId}/read")
   public void markAsRead(@PathVariable Long roomId, @RequestParam Long userId) {

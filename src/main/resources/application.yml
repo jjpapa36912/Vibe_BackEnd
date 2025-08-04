@@ -14,6 +14,7 @@ spring:
 
   jpa:
     database: mysql
+    open-in-view: false
     database-platform: org.hibernate.dialect.MariaDBDialect
     hibernate:
       ddl-auto: update
@@ -57,6 +58,11 @@ jwt:
 
 app:
   external:
-    url: https://7834498ad334.ngrok-free.app
+    url: http://13.124.208.108:8080
   websocket:
-    url: wss://7834498ad334.ngrok-free.app/ws
+    url: ws://13.124.208.108:8080/ws
+#app:
+#  external:
+#    url: https://7834498ad334.ngrok-free.app
+#  websocket:
+#    url: wss://7834498ad334.ngrok-free.app/ws
