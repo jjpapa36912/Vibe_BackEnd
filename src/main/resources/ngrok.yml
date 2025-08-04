@@ -1,0 +1,10 @@
+version: "2"
+authtoken: 2yBHS1eyIyR4blWBNE5j6MYx7Rg_4V89nc11nfbKuYoCyYaQ2
+
+tunnels:
+  springboot:
+    proto: http
+    addr: 8080
+  fastapi:
+    proto: http
+    addr: 5001
