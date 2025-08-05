@@ -24,6 +24,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -63,6 +66,38 @@ public class ChatService {
         ChatMessageResponse.from(message)
     );
   }
+//  public List<ChatMessageResponse> getRecentMessages(Long roomId, int limit) {
+//    Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "sentAt"));
+//    return messageRepo.findRecentMessages(roomId, pageable)
+//        .stream()
+//        .map(ChatMessageResponse::from)
+//        .toList();
+//  }
+public List<ChatMessageResponse> getRecentMessages(Long roomId, int limit) {
+  log.info("📩 [getRecentMessages] roomId: {}, limit: {}", roomId, limit);
+
+  List<ChatMessageResponse> messages =
+      messageRepo.findRecentMessagesDto(roomId, PageRequest.of(0, limit));
+
+  log.info("✅ [getRecentMessages] 가져온 메시지 개수: {}", messages.size());
+  return messages;
+}
+
+//  public List<ChatMessageResponse> getOldMessages(Long roomId, LocalDateTime beforeTime, int limit) {
+//    log.info("📩 [getOldMessages] roomId: {}, beforeTime: {}, limit: {}", roomId, beforeTime, limit);
+//
+//    List<ChatMessage> messages = messageRepo.findOldMessages(roomId, beforeTime, PageRequest.of(0, limit));
+//    log.info("✅ [getOldMessages] 가져온 이전 메시지 개수: {}", messages.size());
+//
+//    return messages.stream()
+//        .map(ChatMessageResponse::from)
+//        .toList();
+//  }
+// ✅ 무한 스크롤 과거 메시지
+public List<ChatMessageResponse> getOldMessages(Long roomId, LocalDateTime beforeTime, int limit) {
+  log.info("📩 [getOldMessages] roomId: {}, beforeTime: {}, limit: {}", roomId, beforeTime, limit);
+  return messageRepo.findOldMessagesDto(roomId, beforeTime, PageRequest.of(0, limit));
+}
   @Transactional
   public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
     ChatRoom room = chatRoomRepository.findById(roomId)
@@ -263,7 +298,7 @@ public class ChatService {
 
     return ChatMessageResponse.from(message);
   }
-  @Transactional(readOnly = true)
+  @Transactional
   public List<ChatMessageResponse> getChatHistory(Long roomId) {
     log.info("📥 [ChatService] getChatHistory 호출 - roomId: {}", roomId);
 

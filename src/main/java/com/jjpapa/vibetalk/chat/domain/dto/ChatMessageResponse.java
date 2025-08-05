@@ -4,9 +4,13 @@ import com.jjpapa.vibetalk.chat.domain.entity.ChatMessage;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @AllArgsConstructor
+@Setter
+@NoArgsConstructor
 public class ChatMessageResponse {
   private Long id;
   private Long senderId;
