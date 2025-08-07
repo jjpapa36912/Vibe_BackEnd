@@ -98,36 +98,68 @@ public List<ChatMessageResponse> getOldMessages(Long roomId, LocalDateTime befor
   log.info("📩 [getOldMessages] roomId: {}, beforeTime: {}, limit: {}", roomId, beforeTime, limit);
   return messageRepo.findOldMessagesDto(roomId, beforeTime, PageRequest.of(0, limit));
 }
-  @Transactional
-  public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
-    ChatRoom room = chatRoomRepository.findById(roomId)
-        .orElseThrow(() -> new IllegalArgumentException("채팅방이 존재하지 않습니다."));
-    User sender = userRepository.findById(dto.getSenderId())
-        .orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
+//  @Transactional
+//  public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
+//    ChatRoom room = chatRoomRepository.findById(roomId)
+//        .orElseThrow(() -> new IllegalArgumentException("채팅방이 존재하지 않습니다."));
+//    User sender = userRepository.findById(dto.getSenderId())
+//        .orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
+//
+//    ChatMessage message = ChatMessage.builder()
+//        .chatRoom(room)
+//        .sender(sender)
+//        .content(dto.getContent())
+//        .sentAt(LocalDateTime.now())
+//        .build();
+//
+//    ChatMessage saved = messageRepo.save(message);
+//
+//    List<ChatRoomMember> participants = chatRoomMemberRepository.findByChatRoomId(roomId);
+//
+//    for (ChatRoomMember member : participants) {
+//      if (!member.getUser().getId().equals(sender.getId())) {
+//        UnreadMessage unread = new UnreadMessage();
+//        unread.setUserId(member.getUser().getId());
+//        unread.setRoomId(roomId);
+//        unread.setMessageId(saved.getId());
+//        unreadRepo.save(unread);
+//      }
+//    }
+//
+//    return saved;
+//  }
+@Transactional
+public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
+  ChatRoom room = chatRoomRepository.findById(roomId)
+      .orElseThrow(() -> new IllegalArgumentException("채팅방이 존재하지 않습니다."));
+  User sender = userRepository.findById(dto.getSenderId())
+      .orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
 
-    ChatMessage message = ChatMessage.builder()
-        .chatRoom(room)
-        .sender(sender)
-        .content(dto.getContent())
-        .sentAt(LocalDateTime.now())
-        .build();
+  ChatMessage message = ChatMessage.builder()
+      .chatRoom(room)
+      .sender(sender)
+      .content(dto.getContent())
+      .sentAt(LocalDateTime.now())
+      .emotion(dto.getEmotion())       // ✅ 추가
+      .fontName(dto.getFontName())     // ✅ 추가
+      .build();
 
-    ChatMessage saved = messageRepo.save(message);
+  ChatMessage saved = messageRepo.save(message);
 
-    List<ChatRoomMember> participants = chatRoomMemberRepository.findByChatRoomId(roomId);
+  List<ChatRoomMember> participants = chatRoomMemberRepository.findByChatRoomId(roomId);
 
-    for (ChatRoomMember member : participants) {
-      if (!member.getUser().getId().equals(sender.getId())) {
-        UnreadMessage unread = new UnreadMessage();
-        unread.setUserId(member.getUser().getId());
-        unread.setRoomId(roomId);
-        unread.setMessageId(saved.getId());
-        unreadRepo.save(unread);
-      }
+  for (ChatRoomMember member : participants) {
+    if (!member.getUser().getId().equals(sender.getId())) {
+      UnreadMessage unread = new UnreadMessage();
+      unread.setUserId(member.getUser().getId());
+      unread.setRoomId(roomId);
+      unread.setMessageId(saved.getId());
+      unreadRepo.save(unread);
     }
-
-    return saved;
   }
+
+  return saved;
+}
 
 
   public List<Long> getRoomParticipants(Long roomId) {

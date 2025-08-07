@@ -22,7 +22,9 @@ public interface ChatMessageRepository extends
         s.id,
         s.name,
         m.content,
-        m.sentAt
+        m.sentAt,
+        m.emotion,
+        m.fontName
     )
     FROM ChatMessage m
     JOIN m.sender s
@@ -33,6 +35,7 @@ public interface ChatMessageRepository extends
       @Param("roomId") Long roomId,
       Pageable pageable
   );
+
 
 //  @Query("SELECT new com.jjpapa.vibetalk.chat.domain.dto.ChatMessageResponse(" +
 //      "m.id, s.id, s.name, m.content, m.sentAt) " +
