@@ -45,27 +45,27 @@ public class ChatService {
 
   private final PushNotificationService pushNotificationService;
 
-  @Transactional
-  public void sendMessage(ChatMessageDto dto) {
-    ChatRoom room = chatRoomRepository.findById(dto.getChatRoomId())
-        .orElseThrow(() -> new IllegalArgumentException("채팅방이 없습니다."));
-    User sender = userRepository.findById(dto.getSenderId())
-        .orElseThrow(() -> new IllegalArgumentException("사용자가 없습니다."));
-
-    ChatMessage message = ChatMessage.builder()
-        .chatRoom(room)
-        .sender(sender)
-        .content(dto.getContent())
-        .sentAt(LocalDateTime.now())
-        .build();
-
-    messageRepo.save(message);
-
-    messagingTemplate.convertAndSend(
-        "/topic/room." + room.getId(),
-        ChatMessageResponse.from(message)
-    );
-  }
+//  @Transactional
+//  public void sendMessage(ChatMessageDto dto) {
+//    ChatRoom room = chatRoomRepository.findById(dto.getChatRoomId())
+//        .orElseThrow(() -> new IllegalArgumentException("채팅방이 없습니다."));
+//    User sender = userRepository.findById(dto.getSenderId())
+//        .orElseThrow(() -> new IllegalArgumentException("사용자가 없습니다."));
+//
+//    ChatMessage message = ChatMessage.builder()
+//        .chatRoom(room)
+//        .sender(sender)
+//        .content(dto.getContent())
+//        .sentAt(LocalDateTime.now())
+//        .build();
+//
+//    messageRepo.save(message);
+//
+//    messagingTemplate.convertAndSend(
+//        "/topic/room." + room.getId(),
+//        ChatMessageResponse.from(message)
+//    );
+//  }
 //  public List<ChatMessageResponse> getRecentMessages(Long roomId, int limit) {
 //    Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "sentAt"));
 //    return messageRepo.findRecentMessages(roomId, pageable)
@@ -140,8 +140,10 @@ public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
       .sender(sender)
       .content(dto.getContent())
       .sentAt(LocalDateTime.now())
-      .emotion(dto.getEmotion())       // ✅ 추가
-      .fontName(dto.getFontName())     // ✅ 추가
+      .emotion(dto.getEmotion())
+
+      .fontName(dto.getFontName())
+      .emoji(dto.getEmoji())
       .build();
 
   ChatMessage saved = messageRepo.save(message);

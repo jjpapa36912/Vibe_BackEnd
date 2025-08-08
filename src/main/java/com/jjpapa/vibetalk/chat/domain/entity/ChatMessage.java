@@ -30,16 +30,20 @@ public class ChatMessage {
   // ✅ 추가
   private String emotion;
 
-
+  @Column(name = "emoji")
+  private String emoji;  // ✅ 이모지 필드 추가
   @Column(nullable = false)
   private LocalDateTime sentAt;
+
   @Builder
-  public ChatMessage(ChatRoom chatRoom, User sender, String content, LocalDateTime sentAt, String emotion, String fontName) {
+  public ChatMessage(ChatRoom chatRoom, User sender, String content, LocalDateTime sentAt, String emotion, String fontName, String emoji) {
     this.chatRoom = chatRoom;
     this.sender = sender;
     this.content = content;
     this.sentAt = sentAt;
     this.emotion = emotion;
     this.fontName = fontName;
+    this.emoji = emoji; // ✅ 이모지 저장
   }
+
 }

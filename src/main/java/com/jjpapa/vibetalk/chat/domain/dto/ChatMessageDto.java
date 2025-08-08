@@ -21,11 +21,9 @@ public class ChatMessageDto {
   private String sentAt;
   private Long chatRoomId;
 
-  // ✅ 추가
-  private String emotion;
-
-  // ✅ 추가
-  private String fontName;
+  private String emotion;    // ✅ 감정
+  private String fontName;   // ✅ 폰트
+  private String emoji;      // ✅ 이모지 ← 이거 추가 필요!!
 
   public static ChatMessageDto fromEntity(ChatMessage message) {
     return new ChatMessageDto(
@@ -35,44 +33,10 @@ public class ChatMessageDto {
         message.getContent(),
         message.getSentAt().toString(),
         message.getChatRoom().getId(),
-        message.getEmotion(),     // ✅ 추가
-        message.getFontName()     // ✅ 추가
+        message.getEmotion(),
+        message.getFontName(),
+        message.getEmoji()     // ✅ 이모지도 포함
     );
   }
 }
-
-//@Getter
-//@Setter
-//@NoArgsConstructor
-//@AllArgsConstructor
-//public class ChatMessageDto {
-//  private Long id;
-//  private Long senderId;
-//  private String senderName;
-//  private String content;
-//  private String sentAt;
-//  private Long chatRoomId;
-//
-//  public static ChatMessageDto fromEntity(ChatMessage message) {
-//    return new ChatMessageDto(
-//        message.getId(),
-//        message.getSender().getId(),
-//        message.getSender().getName(),
-//        message.getContent(),
-//        message.getSentAt().toString(),
-//        message.getChatRoom().getId()
-//    );
-//  }
-//}
-
-//
-//@Getter
-//@Setter
-//@NoArgsConstructor
-//@AllArgsConstructor
-//public class ChatMessageDto {
-//  private Long chatRoomId;
-//  private Long senderId;
-//  private String content;
-//}
 

@@ -24,17 +24,16 @@ public interface ChatMessageRepository extends
         m.content,
         m.sentAt,
         m.emotion,
-        m.fontName
+        m.fontName,
+        m.emoji      
     )
     FROM ChatMessage m
     JOIN m.sender s
     WHERE m.chatRoom.id = :roomId
-    ORDER BY m.sentAt DESC, m.id DESC
+    ORDER BY m.sentAt DESC
 """)
-  List<ChatMessageResponse> findRecentMessagesDto(
-      @Param("roomId") Long roomId,
-      Pageable pageable
-  );
+  List<ChatMessageResponse> findRecentMessagesDto(@Param("roomId") Long roomId, Pageable pageable);
+
 
 
 //  @Query("SELECT new com.jjpapa.vibetalk.chat.domain.dto.ChatMessageResponse(" +
@@ -54,19 +53,21 @@ public interface ChatMessageRepository extends
 //  List<ChatMessage> findOldMessages(@Param("roomId") Long roomId, @Param("beforeTime") LocalDateTime beforeTime, Pageable pageable);
 // ✅ 특정 시간 이전의 과거 메시지 조회 (무한 스크롤)
 @Query("""
-        SELECT new com.jjpapa.vibetalk.chat.domain.dto.ChatMessageResponse(
-            m.id,
-            s.id,
-            s.name,
-            m.content,
-            m.sentAt
-        )
-        FROM ChatMessage m
-        JOIN m.sender s
-        WHERE m.chatRoom.id = :roomId
-          AND m.sentAt < :beforeTime
-        ORDER BY m.sentAt DESC
-    """)
+    SELECT new com.jjpapa.vibetalk.chat.domain.dto.ChatMessageResponse(
+        m.id,
+        s.id,
+        s.name,
+        m.content,
+        m.sentAt,
+        m.emoji,
+        m.fontName
+    )
+    FROM ChatMessage m
+    JOIN m.sender s
+    WHERE m.chatRoom.id = :roomId
+      AND m.sentAt < :beforeTime
+    ORDER BY m.sentAt DESC
+""")
 List<ChatMessageResponse> findOldMessagesDto(
     @Param("roomId") Long roomId,
     @Param("beforeTime") LocalDateTime beforeTime,
