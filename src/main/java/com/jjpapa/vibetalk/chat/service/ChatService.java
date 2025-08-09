@@ -7,6 +7,7 @@ import com.jjpapa.vibetalk.chat.abstraction.UnreadMessageRepository;
 import com.jjpapa.vibetalk.chat.domain.dto.ChatMessageDto;
 import com.jjpapa.vibetalk.chat.domain.dto.ChatMessageResponse;
 import com.jjpapa.vibetalk.chat.domain.dto.ChatRoomResponse;
+import com.jjpapa.vibetalk.chat.domain.dto.SendChatMessageRequest;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatMessage;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoom;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoomMember;
@@ -14,12 +15,14 @@ import com.jjpapa.vibetalk.chat.domain.entity.UnreadMessage;
 import com.jjpapa.vibetalk.login.abstraction.UserRepository;
 import com.jjpapa.vibetalk.login.domain.entity.User;
 import jakarta.transaction.Transactional;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import java.time.*;
 
 @Service
 @Slf4j
@@ -344,6 +348,48 @@ public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
         .map(ChatMessageResponse::from)
         .toList();
   }
+  // ChatService.java (요지)
+  @Transactional
+  public ChatMessage saveOrGetByClientId(SendChatMessageRequest req) {
+    ChatRoom room = chatRoomRepository.findById(req.chatRoomId())
+        .orElseThrow(() -> new IllegalArgumentException("room not found"));
+    User sender = userRepository.findById(req.senderId())
+        .orElseThrow(() -> new IllegalArgumentException("sender not found"));
+
+    if (req.clientMessageId() != null && !req.clientMessageId().isBlank()) {
+      Optional<ChatMessage> existing =
+          messageRepo.findByClientMessageIdAndSenderIdAndChatRoomId(
+              req.clientMessageId(), sender.getId(), room.getId());
+      if (existing.isPresent()) return existing.get();
+    }
+
+    ChatMessage m = new ChatMessage();
+    m.setChatRoom(room);
+    m.setSender(sender);
+    m.setContent(req.content());
+    m.setClientMessageId(req.clientMessageId()); // 🔑 저장
+
+    // sentAt: 클라가 보낸 값이 유효하면 사용, 아니면 서버 시각
+    Instant inst = Optional.ofNullable(req.sentAt())
+        .map(s -> {
+          try { return Instant.parse(s); }   // "....Z" 형식 OK
+          catch (Exception e) { return null; }
+        })
+        .orElse(null);
+
+    LocalDateTime sentAt = (inst != null)
+        ? LocalDateTime.ofInstant(inst, ZoneId.systemDefault()) // 또는 ZoneOffset.UTC
+        : LocalDateTime.now();
+
+    m.setSentAt(sentAt);
+
+    m.setEmotion(req.emotion());
+    m.setFontName(req.fontName());
+    m.setEmoji(req.emoji());
+
+    return messageRepo.save(m);
+  }
+
 
 
 }

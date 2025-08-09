@@ -21,6 +21,9 @@ public class ChatMessage {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "sender_id")
   private User sender;
+  @Column(name = "client_message_id", length = 64)
+  private String clientMessageId;  // 🔑 클라가 만든 UUID (nullable 허용)
+
 
   @Column(nullable = false, columnDefinition = "TEXT")
   private String content;
