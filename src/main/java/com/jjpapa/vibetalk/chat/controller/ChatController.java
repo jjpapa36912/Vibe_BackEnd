@@ -59,60 +59,56 @@ public class ChatController {
 //      @RequestParam(defaultValue = "50") int limit) {
 //    return ResponseEntity.ok(chatService.getRecentMessages(roomId, limit));
 //  }
-  @GetMapping("/api/chat/chatroom/{roomId}/messages")
+  // 기존: @GetMapping("/api/chat/chatroom/{roomId}/messages")
+  @GetMapping("/api/chat/rooms/{roomId}/messages")
   public ResponseEntity<List<ChatMessageResponse>> getRecentMessages(
       @PathVariable Long roomId,
-      @RequestParam(defaultValue = "50") int limit) {
+      @RequestParam(defaultValue = "50") int limit,
+      Authentication authentication
+  ) {
+    User user = (User) authentication.getPrincipal();
+    log.info("getRecentMessages roomId={}, userId={}", roomId, user.getId());
 
-    List<ChatMessageResponse> messages = chatService.getRecentMessages(roomId, limit);
-    return ResponseEntity.ok(messages);
+    // (옵션) 멤버십 검증을 여기서 하시는 경우 403 사유를 JSON으로 돌려주면 디버깅 쉬움
+    // if (!chatService.isMember(roomId, user.getId())) {
+    //   return ResponseEntity.status(HttpStatus.FORBIDDEN)
+    //     .body(Collections.emptyList());
+    // }
+
+    return ResponseEntity.ok(chatService.getRecentMessages(roomId, limit));
   }
 
-  // 무한 스크롤 - 과거 메시지 로딩
-//  @GetMapping("/api/chat/chatroom/{roomId}/messages/old")
-//  public ResponseEntity<List<ChatMessageResponse>> getOldMessages(
-//      @PathVariable Long roomId,
-//      @RequestParam("before") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime beforeTime,
-//      @RequestParam(defaultValue = "50") int limit) {
-//    return ResponseEntity.ok(chatService.getOldMessages(roomId, beforeTime, limit));
-//  }
-  // ✅ 특정 시간 이전 메시지 (무한 스크롤)
-  @GetMapping("/{roomId}/messages/older")
+  // 기존: @GetMapping("/{roomId}/messages/older")  // 베이스 경로 없음
+  @GetMapping("/api/chat/rooms/{roomId}/messages/old")
   public ResponseEntity<List<ChatMessageResponse>> getOlderMessages(
       @PathVariable Long roomId,
-      @RequestParam String before,  // ISO-8601 문자열
-      @RequestParam(defaultValue = "50") int limit) {
+      @RequestParam("before") String before, // ISO-8601 문자열
+      @RequestParam(defaultValue = "50") int limit,
+      Authentication authentication
+  ) {
+    User user = (User) authentication.getPrincipal();
+    log.info("getOlderMessages roomId={}, userId={}, before={}", roomId, user.getId(), before);
 
     LocalDateTime beforeTime = LocalDateTime.parse(before);
     return ResponseEntity.ok(chatService.getOldMessages(roomId, beforeTime, limit));
   }
 
-//  @GetMapping("/chatroom/{roomId}/messages")
-//  public ResponseEntity<List<ChatMessageResponse>> getMessages(
-//      @PathVariable Long roomId,
-//      @AuthenticationPrincipal StompPrincipal principal) {
-//
-//    log.info("📥 [ChatController] getMessages 호출 - roomId: {}, principal: {}",
-//        roomId,
-//        principal != null ? principal.getName() : "null");
-//
-//    List<ChatMessageResponse> messages = chatService.getChatHistory(roomId);
-//
-//    log.info("✅ [ChatController] getMessages 완료 - 반환 메시지 수: {}", messages.size());
-//
-//    return ResponseEntity.ok(messages);
-//  }
-
-
-  @GetMapping("/chat/rooms/{roomId}/members")
+  // 기존: @GetMapping("/chat/rooms/{roomId}/members")
+  @GetMapping("/api/chat/rooms/{roomId}/members")
   public ResponseEntity<List<UserProfileResponse>> getChatRoomMembers(
-      @PathVariable Long roomId) {
+      @PathVariable Long roomId,
+      Authentication authentication
+  ) {
+    User user = (User) authentication.getPrincipal();
+    log.info("getChatRoomMembers roomId={}, userId={}", roomId, user.getId());
+
     List<User> members = chatService.getChatRoomMembers(roomId);
     List<UserProfileResponse> response = members.stream()
         .map(UserProfileResponse::new)
         .toList();
     return ResponseEntity.ok(response);
   }
+
 
   @MessageMapping("/chat.sendMessage/{roomId}")
   public void sendMessage(@DestinationVariable Long roomId, ChatMessageDto dto) {
@@ -142,27 +138,19 @@ public class ChatController {
     }
   }
 
-
-//  @MessageMapping("/chat.sendMessage/{roomId}")
-//  public void sendMessage(@DestinationVariable Long roomId, ChatMessageDto dto) {
-//    ChatMessage saved = chatService.saveMessage(roomId, dto);
-//
-//    messagingTemplate.convertAndSend("/topic/room." + roomId, saved);
-//
-//    List<Long> participants = chatService.getRoomParticipants(roomId);
-//    for (Long userId : participants) {
-//      int totalUnread = chatService.getTotalUnreadMessages(userId);
-//      messagingTemplate.convertAndSend("/topic/unread/total/" + userId, totalUnread);
-//    }
-//  }
-
+  // 기존: @PostMapping("/api/chat/rooms/{roomId}/read") + @RequestParam Long userId
   @PostMapping("/api/chat/rooms/{roomId}/read")
-  public void markAsRead(@PathVariable Long roomId, @RequestParam Long userId) {
+  public ResponseEntity<Void> markAsRead(@PathVariable Long roomId, Authentication authentication) {
+    User user = (User) authentication.getPrincipal();
+    Long userId = user.getId();
+
     chatService.markRoomAsRead(roomId, userId);
 
     int totalUnread = chatService.getTotalUnreadMessages(userId);
     messagingTemplate.convertAndSend("/topic/unread/total/" + userId, totalUnread);
+    return ResponseEntity.ok().build();
   }
+
 
   @GetMapping("/api/chat/rooms/unread/total")
   public int getTotalUnread(@RequestParam Long userId) {
