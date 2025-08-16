@@ -32,21 +32,6 @@ public class UserProfileController {
   private String uploadRoot;
 
   /**
-   * 내 프로필 조회 (FriendList 진입 시 사용)
-//   */
-//  @GetMapping("/me")
-//  public ResponseEntity<UserProfileResponse> me(@RequestHeader("Authorization") String token) {
-//    String raw = token == null ? "" : token;
-//    String jwt = raw.replace("Bearer ", "").trim();
-//
-//    String email = jwtUtil.extractEmail(jwt);
-//    User user = userRepository.findByEmail(email)
-//        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-//
-//    return ResponseEntity.ok(new UserProfileResponse(user));
-//  }
-
-  /**
    * 프로필 수정 (상태메시지, 프로필 이미지)
    */
   @PostMapping(value = "/me/update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

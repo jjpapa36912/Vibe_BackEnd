@@ -1,5 +1,6 @@
 package com.jjpapa.vibetalk.login.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -7,11 +8,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+  @Value("${app.upload-dir}")
+  private String uploadDir;
+
   @Override
   public void addResourceHandlers(ResourceHandlerRegistry registry) {
-    String uploadsPath = System.getProperty("user.dir") + "/uploads/";
     registry.addResourceHandler("/uploads/**")
-        .addResourceLocations("file:" + uploadsPath);
+        .addResourceLocations("file:" + uploadDir + "/");
   }
 
   @Override

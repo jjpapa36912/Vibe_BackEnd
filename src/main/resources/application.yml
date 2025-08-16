@@ -61,7 +61,7 @@ app:
     url: http://13.124.208.108:8080
   websocket:
     url: ws://13.124.208.108:8080/ws
-  upload-dir: /var/www/html/uploads
+  upload-dir: ${UPLOAD_DIR:#{systemProperties['user.dir'] + '/uploads'}}
 
 #app:
 #  external:
