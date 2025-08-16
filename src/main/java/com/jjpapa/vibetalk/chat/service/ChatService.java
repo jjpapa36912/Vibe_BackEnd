@@ -12,6 +12,7 @@ import com.jjpapa.vibetalk.chat.domain.entity.ChatMessage;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoom;
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoomMember;
 import com.jjpapa.vibetalk.chat.domain.entity.UnreadMessage;
+import com.jjpapa.vibetalk.chat.domain.enumeration.ChatRoomMode;
 import com.jjpapa.vibetalk.login.abstraction.UserRepository;
 import com.jjpapa.vibetalk.login.domain.entity.User;
 import jakarta.transaction.Transactional;
@@ -49,34 +50,6 @@ public class ChatService {
 
   private final PushNotificationService pushNotificationService;
 
-//  @Transactional
-//  public void sendMessage(ChatMessageDto dto) {
-//    ChatRoom room = chatRoomRepository.findById(dto.getChatRoomId())
-//        .orElseThrow(() -> new IllegalArgumentException("채팅방이 없습니다."));
-//    User sender = userRepository.findById(dto.getSenderId())
-//        .orElseThrow(() -> new IllegalArgumentException("사용자가 없습니다."));
-//
-//    ChatMessage message = ChatMessage.builder()
-//        .chatRoom(room)
-//        .sender(sender)
-//        .content(dto.getContent())
-//        .sentAt(LocalDateTime.now())
-//        .build();
-//
-//    messageRepo.save(message);
-//
-//    messagingTemplate.convertAndSend(
-//        "/topic/room." + room.getId(),
-//        ChatMessageResponse.from(message)
-//    );
-//  }
-//  public List<ChatMessageResponse> getRecentMessages(Long roomId, int limit) {
-//    Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "sentAt"));
-//    return messageRepo.findRecentMessages(roomId, pageable)
-//        .stream()
-//        .map(ChatMessageResponse::from)
-//        .toList();
-//  }
 public List<ChatMessageResponse> getRecentMessages(Long roomId, int limit) {
   log.info("📩 [getRecentMessages] roomId: {}, limit: {}", roomId, limit);
 
@@ -87,51 +60,15 @@ public List<ChatMessageResponse> getRecentMessages(Long roomId, int limit) {
   return messages;
 }
 
-//  public List<ChatMessageResponse> getOldMessages(Long roomId, LocalDateTime beforeTime, int limit) {
-//    log.info("📩 [getOldMessages] roomId: {}, beforeTime: {}, limit: {}", roomId, beforeTime, limit);
-//
-//    List<ChatMessage> messages = messageRepo.findOldMessages(roomId, beforeTime, PageRequest.of(0, limit));
-//    log.info("✅ [getOldMessages] 가져온 이전 메시지 개수: {}", messages.size());
-//
-//    return messages.stream()
-//        .map(ChatMessageResponse::from)
-//        .toList();
-//  }
+
 // ✅ 무한 스크롤 과거 메시지
 public List<ChatMessageResponse> getOldMessages(Long roomId, LocalDateTime beforeTime, int limit) {
   log.info("📩 [getOldMessages] roomId: {}, beforeTime: {}, limit: {}", roomId, beforeTime, limit);
   return messageRepo.findOldMessagesDto(roomId, beforeTime, PageRequest.of(0, limit));
 }
-//  @Transactional
-//  public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
-//    ChatRoom room = chatRoomRepository.findById(roomId)
-//        .orElseThrow(() -> new IllegalArgumentException("채팅방이 존재하지 않습니다."));
-//    User sender = userRepository.findById(dto.getSenderId())
-//        .orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
-//
-//    ChatMessage message = ChatMessage.builder()
-//        .chatRoom(room)
-//        .sender(sender)
-//        .content(dto.getContent())
-//        .sentAt(LocalDateTime.now())
-//        .build();
-//
-//    ChatMessage saved = messageRepo.save(message);
-//
-//    List<ChatRoomMember> participants = chatRoomMemberRepository.findByChatRoomId(roomId);
-//
-//    for (ChatRoomMember member : participants) {
-//      if (!member.getUser().getId().equals(sender.getId())) {
-//        UnreadMessage unread = new UnreadMessage();
-//        unread.setUserId(member.getUser().getId());
-//        unread.setRoomId(roomId);
-//        unread.setMessageId(saved.getId());
-//        unreadRepo.save(unread);
-//      }
-//    }
-//
-//    return saved;
-//  }
+
+
+
 @Transactional
 public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
   ChatRoom room = chatRoomRepository.findById(roomId)
@@ -291,24 +228,18 @@ public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
   }
   @Transactional
   public List<ChatRoomResponse> getChatRoomsForUser(User user) {
-    List<ChatRoom> rooms = chatRoomRepository.findAllByMember(user.getId());
-
+    List<ChatRoom> rooms = chatRoomRepository.findAllByMember(user.getId()); // 멤버십 조인
     return rooms.stream().map(room -> {
       List<User> members = chatRoomMemberRepository.findUsersByRoomId(room.getId());
-      // 현재 로그인 유저 제외
       String displayName = members.stream()
-          .filter(member -> !member.getId().equals(user.getId()))
+          .filter(m -> !m.getId().equals(user.getId()))
           .map(User::getName)
           .collect(Collectors.joining(", "));
-
-      // 그룹 이름이 비어 있으면 fallback
-      if (displayName.isBlank()) {
-        displayName = room.getRoomName();
-      }
-
-      return new ChatRoomResponse(room.getId(), displayName);
+      if (displayName.isBlank()) displayName = room.getRoomName();
+      return ChatRoomResponse.from(room, displayName);
     }).collect(Collectors.toList());
   }
+
 
 
   public List<ChatRoom> getUserChatRooms(Long userId) {
@@ -389,6 +320,51 @@ public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
 
     return messageRepo.save(m);
   }
+  // com.jjpapa.vibetalk.chat.service.ChatService.java
+// 시그니처에 mode 추가
+  @Transactional
+  public ChatRoomResponse createGroupChatRoom(User creator,
+      List<User> members,
+      String roomName,
+      ChatRoomMode mode) {
+    ChatRoom room = new ChatRoom();
+    room.setRoomName(roomName);
+    room.setMode(mode != null ? mode : ChatRoomMode.random);
+    room.setCreator(creator);
+    room.setCreatedAt(LocalDateTime.now());
+    chatRoomRepository.save(room);
+
+    // ✅ 멤버십 추가: 생성자 본인 + 초대한 멤버들
+    addMember(room, creator);
+    for (User u : members) {
+      if (!u.getId().equals(creator.getId())) {
+        addMember(room, u);
+      }
+    }
+
+    // 표시 이름(상대방 이름들 join) 만들어 응답
+    List<User> all = chatRoomMemberRepository.findUsersByRoomId(room.getId());
+    String displayName = all.stream()
+        .filter(u -> !u.getId().equals(creator.getId()))
+        .map(User::getName)
+        .collect(Collectors.joining(", "));
+    if (displayName.isBlank()) displayName = room.getRoomName();
+
+    return ChatRoomResponse.from(room, displayName);
+  }
+
+  private void addMember(ChatRoom room, User user) {
+    // 중복 방지
+    boolean exists = chatRoomMemberRepository
+        .existsByChatRoomIdAndUserId(room.getId(), user.getId());
+    if (exists) return;
+
+    ChatRoomMember m = new ChatRoomMember();
+    m.setChatRoom(room);
+    m.setUser(user);
+    chatRoomMemberRepository.save(m);
+  }
+
 
 
 

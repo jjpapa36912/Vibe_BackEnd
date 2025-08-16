@@ -13,8 +13,8 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
       "FROM ChatRoomMember crm " +
       "WHERE crm.user.id = :userId")
   List<ChatRoom> findByUserId(@Param("userId") Long userId);
-  @Query("SELECT r FROM ChatRoom r JOIN ChatRoomMember m ON r.id = m.chatRoom.id WHERE m.user.id = :userId")
-  List<ChatRoom> findAllByMember(@Param("userId") Long userId);
+//  @Query("SELECT r FROM ChatRoom r JOIN ChatRoomMember m ON r.id = m.chatRoom.id WHERE m.user.id = :userId")
+//  List<ChatRoom> findAllByMember(@Param("userId") Long userId);
   @Query("SELECT r.id FROM ChatRoom r " +
       "JOIN ChatRoomMember m ON r.id = m.chatRoom.id " +
       "WHERE m.user.id IN :memberIds " +
@@ -24,6 +24,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
       "(SELECT COUNT(m2) FROM ChatRoomMember m2 WHERE m2.chatRoom.id = r.id)")
   List<Long> findRoomWithExactMembers(@Param("memberIds") List<Long> memberIds,
       @Param("memberCount") long memberCount);
-
+  @Query("""
+    select r from ChatRoom r
+    join ChatRoomMember m on m.chatRoom.id = r.id
+    where m.user.id = :userId
+    order by r.createdAt desc, r.id desc
+  """)
+  List<ChatRoom> findAllByMember(@Param("userId") Long userId);
 }
 

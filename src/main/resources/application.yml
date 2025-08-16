@@ -61,6 +61,8 @@ app:
     url: http://13.124.208.108:8080
   websocket:
     url: ws://13.124.208.108:8080/ws
+  upload-dir: /var/www/html/uploads
+
 #app:
 #  external:
 #    url: https://7834498ad334.ngrok-free.app

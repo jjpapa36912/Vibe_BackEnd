@@ -41,14 +41,42 @@ public class ChatController {
   private final ChatMessageRepository chatMessageRepository;
 
   private final SimpMessagingTemplate simpMessagingTemplate;
+  @PostMapping("/api/chat/rooms")
+  public ResponseEntity<ChatRoomResponse> createChatRoom(
+      @RequestBody CreateChatRoomRequest request,
+      Authentication authentication) {
 
+    User creator = (User) authentication.getPrincipal();
+    List<User> members = userRepository.findAllById(request.getMemberIds());
+
+    ChatRoomResponse response = chatService.createGroupChatRoom(
+        creator,
+        members,
+        request.getRoomName(),
+        request.getMode() // ✅ 모드 전달
+    );
+    return ResponseEntity.ok(response);
+  }
 
   @GetMapping("/api/chat/rooms")
   public ResponseEntity<List<ChatRoomResponse>> getMyChatRooms(Authentication authentication) {
     User user = (User) authentication.getPrincipal();
-    List<ChatRoomResponse> rooms = chatService.getChatRoomsForUser(user);
+    List<ChatRoomResponse> rooms = chatService.getChatRoomsForUser(user); // 내부에서 mode 포함 매핑
     return ResponseEntity.ok(rooms);
   }
+
+//  // (선택) 입장 시 정확한 모드 동기화를 위한 상세 API
+//  @GetMapping("/api/chat/rooms/{roomId}")
+//  public ResponseEntity<ChatRoomResponse> getRoomDetail(@PathVariable Long roomId) {
+//    return ResponseEntity.ok(chatService.getRoomDetail(roomId));
+//  }
+
+//  @GetMapping("/api/chat/rooms")
+//  public ResponseEntity<List<ChatRoomResponse>> getMyChatRooms(Authentication authentication) {
+//    User user = (User) authentication.getPrincipal();
+//    List<ChatRoomResponse> rooms = chatService.getChatRoomsForUser(user);
+//    return ResponseEntity.ok(rooms);
+//  }
 
   // 최신 메시지 50개 로딩
 //  @GetMapping("/api/chat/chatroom/{roomId}/messages")
@@ -108,33 +136,6 @@ public class ChatController {
   }
 
 
-//  @MessageMapping("/chat.sendMessage/{roomId}")
-//  public void sendMessage(@DestinationVariable Long roomId, ChatMessageDto dto) {
-//    log.info("📩 [sendMessage] 채팅 메시지 수신 - roomId: {}, dto: {}", roomId, dto);
-//
-//    try {
-//      ChatMessage saved = chatService.saveMessage(roomId, dto);
-//      log.info("✅ [sendMessage] 메시지 DB 저장 완료: {}", saved.getId());
-//
-//      // 엔티티 → DTO 변환
-//      ChatMessageDto responseDto = ChatMessageDto.fromEntity(saved);
-//      log.info("🔄 [sendMessage] 엔티티 → DTO 변환 완료");
-//
-//      messagingTemplate.convertAndSend("/topic/room." + roomId, responseDto);
-//      log.info("📤 [sendMessage] WebSocket 전송 완료 → /topic/room.{}", roomId);
-//
-//      List<Long> participants = chatService.getRoomParticipants(roomId);
-//      log.info("👥 [sendMessage] 채팅방 참가자 수: {}", participants.size());
-//
-//      for (Long userId : participants) {
-//        int totalUnread = chatService.getTotalUnreadMessages(userId);
-//        messagingTemplate.convertAndSend("/topic/unread/total/" + userId, totalUnread);
-//        log.info("🔔 [sendMessage] 안 읽은 메시지 수 전송 - userId: {}, count: {}", userId, totalUnread);
-//      }
-//    } catch (Exception e) {
-//      log.error("❌ [sendMessage] 에러 발생: ", e);
-//    }
-//  }
 // ChatController.java (요지)
 @MessageMapping("/chat.sendMessage/{roomId}")
 public void sendMessage(@DestinationVariable Long roomId,
@@ -217,25 +218,25 @@ public void sendMessage(@DestinationVariable Long roomId,
     return chatService.getTotalUnreadMessages(userId);
   }
 
-  @PostMapping("/api/chat/rooms")
-  public ResponseEntity<ChatRoomResponse> createChatRoom(
-      @RequestBody CreateChatRoomRequest request,
-      Principal principal) {
-
-    // principal을 User로 캐스팅
-    User creator = (User) ((Authentication) principal).getPrincipal();
-
-    // 초대할 멤버 조회
-    List<User> members = userRepository.findAllById(request.getMemberIds());
-
-    ChatRoomResponse response = chatService.createGroupChatRoom(
-        creator,
-        members,
-        request.getRoomName()
-    );
-
-    return ResponseEntity.ok(response);
-  }
+//  @PostMapping("/api/chat/rooms")
+//  public ResponseEntity<ChatRoomResponse> createChatRoom(
+//      @RequestBody CreateChatRoomRequest request,
+//      Principal principal) {
+//
+//    // principal을 User로 캐스팅
+//    User creator = (User) ((Authentication) principal).getPrincipal();
+//
+//    // 초대할 멤버 조회
+//    List<User> members = userRepository.findAllById(request.getMemberIds());
+//
+//    ChatRoomResponse response = chatService.createGroupChatRoom(
+//        creator,
+//        members,
+//        request.getRoomName()
+//    );
+//
+//    return ResponseEntity.ok(response);
+//  }
 
 
 

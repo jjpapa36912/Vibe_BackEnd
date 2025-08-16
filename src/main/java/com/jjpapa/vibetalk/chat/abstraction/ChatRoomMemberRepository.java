@@ -13,5 +13,6 @@ public interface ChatRoomMemberRepository extends
   @Query("SELECT m.user FROM ChatRoomMember m WHERE m.chatRoom.id = :roomId")
   List<User> findUsersByRoomId(@Param("roomId") Long roomId);
 
+  boolean existsByChatRoomIdAndUserId(Long chatRoomId, Long userId);
 
 }
