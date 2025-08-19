@@ -43,7 +43,7 @@ public class UserProfileController {
         byId.getId(),
         byId.getPhoneNumber(),
         byId.getName(),
-        "contactName",
+        "TestFriend",
         byId.getStatusMessage(),
         byId.getProfileImageUrl()
     );

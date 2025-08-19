@@ -2,8 +2,10 @@ package com.jjpapa.vibetalk.chat.abstraction;
 
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoomMember;
 import com.jjpapa.vibetalk.login.domain.entity.User;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,5 +16,8 @@ public interface ChatRoomMemberRepository extends
   List<User> findUsersByRoomId(@Param("roomId") Long roomId);
 
   boolean existsByChatRoomIdAndUserId(Long chatRoomId, Long userId);
-
+  @Modifying
+  @Transactional
+  @Query("delete from ChatRoomMember m where m.user.id = :userId")
+  void deleteByUserId(@Param("userId") Long userId);
 }

@@ -2,12 +2,24 @@ package com.jjpapa.vibetalk.chat.abstraction;
 
 
 import com.jjpapa.vibetalk.chat.domain.entity.ChatRoom;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
+  // 멤버가 하나도 없는 방들의 id 목록
+  @Query("""
+           select r.id
+           from ChatRoom r
+           where not exists (
+               select 1 from ChatRoomMember m
+               where m.chatRoom = r
+           )
+           """)
+  List<Long> findIdsWithoutMembers();
   // ✅ ChatRoomMember 조인해서 특정 userId가 포함된 방을 찾음
   @Query("SELECT DISTINCT crm.chatRoom " +
       "FROM ChatRoomMember crm " +
