@@ -26,6 +26,7 @@ public class SecurityConfig {
             .requestMatchers(
                 "/api/auth/**",
                 "/api/friends/sync",
+                "/api/friends/fallback",
                 "/api/me",
                 "/chat/**",
                 "/api/chat/**",

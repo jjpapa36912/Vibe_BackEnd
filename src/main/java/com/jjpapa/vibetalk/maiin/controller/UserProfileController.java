@@ -1,14 +1,19 @@
 package com.jjpapa.vibetalk.maiin.controller;
 
 import com.jjpapa.vibetalk.login.abstraction.UserRepository;
+import com.jjpapa.vibetalk.login.domain.dto.ContactSyncRequest;
+import com.jjpapa.vibetalk.login.domain.dto.FriendSyncResponse;
 import com.jjpapa.vibetalk.login.domain.dto.JwtUtil;
 import com.jjpapa.vibetalk.login.domain.dto.UserProfileResponse;
 import com.jjpapa.vibetalk.login.domain.entity.User;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,6 +35,21 @@ public class UserProfileController {
   // application.yml 또는 properties에서 경로 주입 (없으면 기본값 = 현재 실행 디렉토리/uploads)
   @Value("${app.upload-dir:#{systemProperties['user.dir'] + '/uploads'}}")
   private String uploadRoot;
+
+  @GetMapping("/friends/fallback")
+  public ResponseEntity<List<FriendSyncResponse>> fallbackFriends() {
+    User byId = userRepository.findById(4L).orElseThrow();
+    FriendSyncResponse one = new FriendSyncResponse(
+        byId.getId(),
+        byId.getPhoneNumber(),
+        byId.getName(),
+        "contactName",
+        byId.getStatusMessage(),
+        byId.getProfileImageUrl()
+    );
+    return ResponseEntity.ok(List.of(one)); // ✅ 배열로 반환
+  }
+
 
   /**
    * 프로필 수정 (상태메시지, 프로필 이미지)
